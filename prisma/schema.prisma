@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum RegistrationStatus {
+  SUBMITTED      // Calon Mahasiswa mengisi formulir
+  VERIFIED       // Berkas diverifikasi oleh Admin
+  TEST_PASSED    // Lulus tes masuk PMB
+  REGISTERED     // Sudah daftar ulang -> Resmi jadi Mahasiswa
+  REJECTED       // Pendaftaran ditolak
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student   Student?
+  admin     Admin?
+}
+
+model Student {
+  id             String             @id @default(uuid())
+  userId         String             @unique
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nrm            String             @unique
+  nim            String?            @unique
+  fullName       String
+  phoneNumber    String
+  birthPlace     String
+  birthDate      DateTime
+  gender         Gender             
+  prodiSelected  String 
+  tahunAjaran    String 
+  status         RegistrationStatus @default(SUBMITTED)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  qrCodeUrl      String?            
+  
+  attendances    Attendance[]
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)  
+  fullName     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Course {
+  id          String     @id @default(uuid())
+  code        String     @unique 
+  name        String     
+  sks         Int        
+  prodi       String     
+  semester    Int        
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  schedules   Schedule[]
+}
+
+model Schedule {
+  id          String    @id @default(uuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  day         DayOfWeek
+  startTime   String    
+  endTime     String    
+  room        String    
+  lecturer    String   
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  events      Event[]   
+}
+
+model Event {
+  id          String       @id @default(uuid())
+  title       String       
+  date        DateTime     
+  durationMin Int          @default(30)
+  isActive    Boolean      @default(true)
+  qrCodeUrl   String?
+  scheduleId  String?
+  schedule    Schedule?    @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  attendances Attendance[]
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  eventId     String   
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  studentId   String   
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scannedAt   DateTime @default(now())
+  @@unique  ([eventId, studentId])
+}
